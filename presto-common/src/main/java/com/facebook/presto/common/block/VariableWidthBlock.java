@@ -164,7 +164,15 @@ public class VariableWidthBlock
     @Override
     public void retainedBytesForEachPart(ObjLongConsumer<Object> consumer)
     {
-        consumer.accept(slice, slice.getRetainedSize());
+        // Slices with shared base objects, common scenario when a block is deserialized
+        // Account for slice memory & underlying byte array separately
+        if (slice.getBase() != null && slice.hasByteArray()) {
+            consumer.accept(slice, Slices.EMPTY_SLICE.getRetainedSize());
+            consumer.accept(slice.getBase(), sizeOf((byte[]) slice.getBase()));
+        }
+        else {
+            consumer.accept(slice, slice.getRetainedSize());
+        }
         consumer.accept(offsets, sizeOf(offsets));
         if (valueIsNull != null) {
             consumer.accept(valueIsNull, sizeOf(valueIsNull));
